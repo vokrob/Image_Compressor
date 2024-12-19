@@ -10,6 +10,11 @@ import android.provider.MediaStore
 import java.io.File
 import java.io.FileOutputStream
 
+fun getFileSize(context: Context, uri: Uri): Long {
+    val fileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return 0
+    return fileDescriptor.statSize
+}
+
 fun compressImage(context: Context, uri: Uri) {
     val inputStream = context.contentResolver.openInputStream(uri)
     val originalBitmap = BitmapFactory.decodeStream(inputStream)
@@ -32,9 +37,9 @@ private fun saveImage(context: Context, imageFile: File) {
             Environment.DIRECTORY_PICTURES
         )
     }
-
     val uri: Uri? =
         context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+
     if (uri != null) {
         context.contentResolver.openOutputStream(uri)?.use { outputStream ->
             imageFile.inputStream().use { inputStream ->

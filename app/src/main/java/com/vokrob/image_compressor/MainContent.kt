@@ -39,11 +39,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainContent() {
-    var bitmapResult by remember { mutableStateOf<Uri?>(null) }
+    var bitmapResult by remember { mutableStateOf<Pair<Uri?, Long>?>(null) }
     val context = LocalContext.current
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            bitmapResult = uri
+            uri?.let {
+                val fileSize = getFileSize(context, it)
+                bitmapResult = Pair(it, fileSize)
+            }
         }
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -69,7 +72,7 @@ fun MainContent() {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        bitmapResult?.let { uri ->
+        bitmapResult?.let { (uri, fileSize) ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -84,10 +87,23 @@ fun MainContent() {
                     AsyncImage(model = uri, contentDescription = null)
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    val fileSizeInKB = fileSize.toFloat() / 1024
+
+                    if (fileSizeInKB > 1000) {
+                        val fileSizeInMB = fileSize.toFloat() / (1024 * 1024)
+                        Text(text = "Размер изображения: ${"%.2f".format(fileSizeInMB)} МБ")
+                    } else {
+                        Text(text = "Размер изображения: ${"%.0f".format(fileSizeInKB)} КБ")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Button(
                         onClick = {
                             CoroutineScope(Dispatchers.Main).launch {
-                                compressImage(context, uri)
+                                if (uri != null) {
+                                    compressImage(context, uri)
+                                }
                                 snackBarHostState.showSnackbar("Изображение сохранено")
                             }
                         },
@@ -106,6 +122,16 @@ fun MainContent() {
         SnackbarHost(hostState = snackBarHostState)
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
