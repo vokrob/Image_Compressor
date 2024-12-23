@@ -1,21 +1,25 @@
-package com.vokrob.image_compressor
+package com.vokrob.image_compressor.ui.components
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -28,18 +32,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.vokrob.image_compressor.utils.compressImage
+import com.vokrob.image_compressor.utils.getFileSize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Preview(showBackground = true)
+enum class CompressionMode { AUTO, MANUAL }
 
 @Composable
-fun MainContent() {
+fun MainScreen() {
     var bitmapResult by remember { mutableStateOf<Pair<Uri?, Long>?>(null) }
+    var compressionMode by remember { mutableStateOf(CompressionMode.AUTO) }
+    var targetSizeKB by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -62,6 +71,48 @@ fun MainContent() {
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                RadioButton(
+                    selected = compressionMode == CompressionMode.AUTO,
+                    onClick = {
+                        compressionMode = CompressionMode.AUTO
+                        targetSizeKB = ""
+                    }
+                )
+                Text("Автоматическое")
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                RadioButton(
+                    selected = compressionMode == CompressionMode.MANUAL,
+                    onClick = { compressionMode = CompressionMode.MANUAL }
+                )
+                Text("Ручное")
+            }
+        }
+
+        if (compressionMode == CompressionMode.MANUAL) {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = targetSizeKB,
+                onValueChange = { if (it.all { char -> char.isDigit() }) targetSizeKB = it },
+                label = { Text(text = "Желаемый размер (КБ)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -70,6 +121,7 @@ fun MainContent() {
         ) {
             Text("Выбрать изображение")
         }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         bitmapResult?.let { (uri, fileSize) ->
@@ -84,16 +136,19 @@ fun MainContent() {
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AsyncImage(model = uri, contentDescription = null)
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = null
+                    )
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val fileSizeInKB = fileSize.toFloat() / 1024
-
                     if (fileSizeInKB > 1000) {
                         val fileSizeInMB = fileSize.toFloat() / (1024 * 1024)
-                        Text(text = "Размер изображения: ${"%.2f".format(fileSizeInMB)} МБ")
+                        Text("Размер изображения: ${"%.2f".format(fileSizeInMB)} МБ")
                     } else {
-                        Text(text = "Размер изображения: ${"%.0f".format(fileSizeInKB)} КБ")
+                        Text("Размер изображения: ${"%.0f".format(fileSizeInKB)} КБ")
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -101,10 +156,14 @@ fun MainContent() {
                     Button(
                         onClick = {
                             CoroutineScope(Dispatchers.Main).launch {
-                                if (uri != null) {
-                                    compressImage(context, uri)
+                                uri?.let {
+                                    val targetSize =
+                                        if (compressionMode == CompressionMode.MANUAL) {
+                                            targetSizeKB.toIntOrNull()
+                                        } else null
+                                    compressImage(context, it, compressionMode, targetSize)
+                                    snackBarHostState.showSnackbar("Изображение сохранено")
                                 }
-                                snackBarHostState.showSnackbar("Изображение сохранено")
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),

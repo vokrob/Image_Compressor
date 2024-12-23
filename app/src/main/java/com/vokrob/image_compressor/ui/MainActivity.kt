@@ -1,4 +1,4 @@
-package com.vokrob.image_compressor
+package com.vokrob.image_compressor.ui
 
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.vokrob.image_compressor.ui.components.MainScreen
 import com.vokrob.image_compressor.ui.theme.Image_CompressorTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,7 +29,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             Image_CompressorTheme {
-                MainContent()
+                MainScreen()
             }
         }
     }
