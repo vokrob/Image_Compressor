@@ -21,7 +21,7 @@ fun compressImage(
     uri: Uri,
     compressionMode: CompressionMode,
     targetSizeKB: Int? = null
-) {
+): Uri {
     val inputStream = context.contentResolver.openInputStream(uri)
     val originalBitmap = BitmapFactory.decodeStream(inputStream)
     val compressedFile = File(context.cacheDir, "compressed_image.jpg")
@@ -48,21 +48,24 @@ fun compressImage(
             }
         }
     }
-    saveImage(context, compressedFile)
+    return Uri.fromFile(compressedFile)
 }
 
-private fun saveImage(context: Context, imageFile: File) {
+fun saveImage(context: Context, uri: Uri) {
     val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, imageFile.name)
+        put(
+            MediaStore.Images.Media.DISPLAY_NAME,
+            "compressed_image_${System.currentTimeMillis()}.jpg"
+        )
         put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
     }
-    val uri: Uri? =
+    val saveUri =
         context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
 
-    uri?.let { savedUri ->
-        context.contentResolver.openOutputStream(savedUri)?.use { outputStream ->
-            imageFile.inputStream().use { inputStream ->
+    saveUri?.let { destinationUri ->
+        context.contentResolver.openOutputStream(destinationUri)?.use { outputStream ->
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 inputStream.copyTo(outputStream)
             }
         }
